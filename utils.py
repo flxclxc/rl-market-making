@@ -2,7 +2,6 @@ from matplotlib import pyplot as plt
 import numpy as np
 import pandas as pd
 
-
 def plot_results(history):
     plt.figure(figsize=(12, 10))
 

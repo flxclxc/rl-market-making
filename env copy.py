@@ -1,5 +1,4 @@
 import numpy as np
-import pandas as pd
 
 
 class MarketMakingEnv:
@@ -50,8 +49,6 @@ class MarketMakingEnv:
             )
 
         bid_spread, offer_spread = action
-        bid_spread = max(bid_spread, 0)  # Ensure non-negative spreads
-        offer_spread = max(offer_spread, 0)  # Ensure non-negative spreads
 
         # Calculate fill probabilities
         bid_fill_prob = self.fill_probability(bid_spread)
@@ -66,21 +63,25 @@ class MarketMakingEnv:
         offer_fill = np.random.binomial(offer_demand, offer_fill_prob)
 
         # Update position and cash
+        bid_price = self.mid_price + bid_spread * self.standard_spread
+        offer_price = self.mid_price - offer_spread * self.standard_spread
+
         self.position -= bid_fill
         self.position += offer_fill
+
+        self.cash += bid_fill * bid_price
+        self.cash -= offer_fill * offer_price
 
         inception_pnl = (bid_fill * bid_spread + offer_fill * offer_spread) * self.standard_spread
 
         # Advance time
         self.current_time += self.time_step
 
-        if self.current_time >= self.end_time:
-            self.done = True
-
         # Update mid-price with random walk
         delta_mid = np.random.normal(loc=0, scale=self.price_volatility)
+
         self.mid_price += delta_mid
-        mark_to_parket_pnl = self.position * delta_mid
+        mark_to_parket_pnl = self.position * self.mid_price
 
         liquidation_penalty = 0
         if self.position < 0:
@@ -88,15 +89,31 @@ class MarketMakingEnv:
         
         reward = inception_pnl + mark_to_parket_pnl - liquidation_penalty
 
-        return self._get_state(), reward, self.done
+        # Check if episode ends
+        if self.current_time >= self.end_time:
+            self.done = True
+            mkt_bid = self.mid_price + self.standard_spread
+            mkt_offer = self.mid_price - self.standard_spread
+
+            # Liquidate remaining position
+            if self.position < 0:
+                self.cash -= (mkt_bid + self.brokerage) * abs(self.position)
+            else:
+                self.cash += (
+                    mkt_offer - self.brokerage
+                ) * abs(self.position)
+
+            self.position = 0
+
+        return self._get_state(), reward, self.done, {}
 
     def _get_state(self):
         return {
             "time": self.current_time,
             "position": self.position,
             "time_remaining": self.end_time - self.current_time,
-            "cash": self.cash,
             "mid_price": self.mid_price,
+            "cash": self.cash,
             "pnl": self.cash + self.position * self.mid_price,
         }
 
@@ -106,37 +123,3 @@ class MarketMakingEnv:
         print(f"Mid Price: {self.mid_price:.2f}")
         print(f"cash: {self.cash:.2f}")
         print(f"Time Remaining: {self.end_time - self.current_time} minutes")
-
-if __name__ == "__main__":
-    env = MarketMakingEnv(
-        liquidity_sensitivity=0.1,
-        standard_spread=0.01,
-        brokerage=0.001,
-        max_position=100,
-    )
-    state = env.reset()
-    print("Initial State:", state)
-    action = (0.02, 0.02)  # Example action
-    done = False
-    history = []
-
-    while not done:
-        history.append(state)
-        next_state, reward, done, _ = env.step(action)
-        print("Next State:", next_state)
-        print("Reward:", reward)
-        state = next_state
-        env.render()
-    history.append(state)
-    history = pd.DataFrame(history)
-
-    # plot history
-    import matplotlib.pyplot as plt
-    plt.plot(history['time'], history['pnl'])
-    plt.xlabel('Time')
-    plt.ylabel('PnL')
-    plt.title('PnL Over Time')
-    plt.savefig('pnl_over_time.png')
-    # Save history to CSV
-    history.to_csv('history.csv', index=False)
-    print("History saved to history.csv")
