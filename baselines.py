@@ -59,7 +59,7 @@ class TanhAgent:
 
         skew = self.max_skew * np.tanh( - scale_factor)
         
-        return 1+skew, 1-skew
+        return 1-skew, 1+skew
     
 
 class ExponentialAgent:

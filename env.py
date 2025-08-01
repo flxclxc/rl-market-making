@@ -41,7 +41,7 @@ class MarketMakingEnv:
 
     def fill_probability(self, skew):
         # use sigmoid function for fill probability
-        return np.exp(- self.liquidity_sensitivity * skew)
+        return np.exp(- skew * self.liquidity_sensitivity)
 
     def step(self, action):
         if self.done:
@@ -49,25 +49,32 @@ class MarketMakingEnv:
                 "Episode has ended. Please reset the environment."
             )
 
+        # Update mid-price with random walk
+        delta_mid = np.random.normal(loc=0, scale=self.price_volatility)
+        self.mid_price += delta_mid
+        mark_to_parket_pnl = self.position * delta_mid
+        
         bid_spread, offer_spread = action
-        bid_spread = max(bid_spread, 0)  # Ensure non-negative spreads
-        offer_spread = max(offer_spread, 0)  # Ensure non-negative spreads
+        bid_spread = max(bid_spread, 0)
+        offer_spread = max(offer_spread, 0)
 
         # Calculate fill probabilities
         bid_fill_prob = self.fill_probability(bid_spread)
-        offer_fill_prob = self.fill_probability(bid_spread)
+        offer_fill_prob = self.fill_probability(offer_spread)
 
         # Simulate random bid and offer demand
         bid_demand = np.random.exponential(scale=self.demand_scale)
         offer_demand = np.random.exponential(scale=self.demand_scale)
-
+        
         # Simulate fills
         bid_fill = np.random.binomial(bid_demand, bid_fill_prob)
         offer_fill = np.random.binomial(offer_demand, offer_fill_prob)
 
         # Update position and cash
-        self.position -= bid_fill
-        self.position += offer_fill
+        self.position += bid_fill
+        self.cash -= bid_fill * (self.mid_price - bid_spread)
+        self.position -= offer_fill
+        self.cash += offer_fill * (self.mid_price + offer_spread)
 
         inception_pnl = (bid_fill * bid_spread + offer_fill * offer_spread) * self.standard_spread
 
@@ -77,15 +84,15 @@ class MarketMakingEnv:
         if self.current_time >= self.end_time:
             self.done = True
 
-        # Update mid-price with random walk
-        delta_mid = np.random.normal(loc=0, scale=self.price_volatility)
-        self.mid_price += delta_mid
-        mark_to_parket_pnl = self.position * delta_mid
+        
 
         liquidation_penalty = 0
-        if self.position < 0:
-            liquidation_penalty = (self.standard_spread + self.brokerage) * abs(self.position)
-        
+        if self.done:
+            if self.position < 0:
+                liquidation_penalty = (self.standard_spread + self.brokerage) * abs(self.position)
+                self.cash += self.position * self.mid_price - liquidation_penalty
+                self.position = 0  # Reset position to zero after liquidation
+
         reward = inception_pnl + mark_to_parket_pnl - liquidation_penalty
 
         return self._get_state(), reward, self.done

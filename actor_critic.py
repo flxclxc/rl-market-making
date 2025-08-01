@@ -1,25 +1,30 @@
 from collections import deque
+from matplotlib import pyplot as plt
 import numpy as np
 from torch import nn, optim
 import torch
+from tqdm import tqdm
 import yaml
 
 from env import MarketMakingEnv
 
 # Policy network (Actor)
 class PolicyNet(nn.Module):
-    def __init__(self, input_dim, output_dim):
+    def __init__(self, input_dim, output_dim, max_spread=2.0, min_spread=0.0):
         super().__init__()
+        self.max_spread = max_spread
+        self.min_spread = min_spread
         self.net = nn.Sequential(
             nn.Linear(input_dim, 64),
             nn.Tanh(),
             nn.Linear(64, 64),
             nn.Tanh(),
-            nn.Linear(64, output_dim)
+            nn.Linear(64, output_dim),
+            nn.Tanh()
         )
 
     def forward(self, x):
-        return self.net(x)
+        return self.net(x) * (self.max_spread - self.min_spread) + self.min_spread
 
 # Value network (Critic)
 class ValueNet(nn.Module):
@@ -37,7 +42,7 @@ class ValueNet(nn.Module):
 if __name__ == '__main__':
     state_dim = 2  # Example state dimension
     action_dim = 2  # Example action dimension
-    lr = 0.001  # Learning rate
+    lr = 1e-2  # Learning rate
     gamma = 1.0  # Discount factor
 
     # Instantiate components
@@ -48,10 +53,11 @@ if __name__ == '__main__':
 
     with open("config.yml", "r") as file:
         config = yaml.safe_load(file)
-        
-    running_rewards = deque(maxlen=100)  # Store last 100 rewards
+    
+    avg_rewards = []
+    running_rewards = deque(maxlen=1000)  # Store last 100 rewards
 
-    for _ in range(1000):  # Example number of steps        
+    for _ in tqdm(range(10000)):  # Example number of steps        
         log_probs = []
         rewards = []
         states = []
@@ -77,6 +83,7 @@ if __name__ == '__main__':
         
         running_rewards.append(np.sum(rewards))
         print(np.mean(running_rewards))
+        avg_rewards.append(np.mean(running_rewards))
         state_tensor = torch.tensor([state['position'], state['time_remaining']], dtype=torch.float32)
         states.append(state_tensor)
 
@@ -100,4 +107,11 @@ if __name__ == '__main__':
         critic_optim.zero_grad()
         critic_loss.backward()
         critic_optim.step()
+
+        plt.plot(running_rewards)
+        plt.xlabel('Episode')
+        plt.ylabel('Average Reward')
+        plt.title('Running Average Reward')
+        plt.savefig('running_average_reward.png')
+        plt.close()
         

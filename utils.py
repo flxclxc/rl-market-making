@@ -65,7 +65,7 @@ def play_episode(env, skew_func):
     while not done:
         # Replace with your policy or action logic
         action = skew_func(state)
-        next_state, reward, done, info = env.step(action)
+        next_state, _, done = env.step(action)
 
         # Collect data for plotting
         state["bid_spread"] = action[0]

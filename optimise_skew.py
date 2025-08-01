@@ -44,8 +44,8 @@ def objective(params):
 
 space = {
     'alpha': hp.loguniform('alpha', -3, 3),
-    'beta' : hp.uniform('beta', 0.0, 2.0),
-    'max_skew': hp.uniform('max_skew', 0.0, 1.0),
+    # 'beta' : hp.uniform('beta', 0.0, 2.0),
+    # 'max_skew': hp.uniform('max_skew', 0.0, 1.0),
 }
 
 # # Define the search space
@@ -86,7 +86,6 @@ if __name__ == "__main__":
             best[k] = float(v) if isinstance(v, np.float64) else v
         
         print("Best parameters:", best)
-        
         skew_agent = TanhAgent(**best)
 
         config['tanh_agent'] = best
@@ -97,7 +96,7 @@ if __name__ == "__main__":
     histories = []
 
     print("Running episodes with best parameters...") 
-    for i in range(10000):
+    for i in range(1000):
         history = play_episode(env, skew_agent)
         history['seed'] = i
         histories.append(history)
