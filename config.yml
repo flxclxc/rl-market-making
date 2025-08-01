@@ -1,0 +1,22 @@
+env:
+  brokerage: 0.2
+  demand_scale: 10
+  end_time: 960
+  liquidity_sensitivity: 1.0
+  max_position: 1000
+  price_volatility: 5.0
+  standard_spread: 0.5
+  start_time: 360
+  time_step: 10
+linear_agent:
+  alpha: 5.344641792547478
+  beta: 0.5567731095062138
+  max_spread: 1.80372028223062
+  min_spread: 0.48634696363844415
+sigmoid_agent:
+  alpha: 0.27032091954655263
+  beta: 0.11435104002276231
+tanh_agent:
+  alpha: 0.1613968800351509
+  beta: 0.023558532994477507
+  max_skew: 0.7260038535219356
