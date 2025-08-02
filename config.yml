@@ -2,11 +2,11 @@ env:
   brokerage: 1
   demand_scale: 100
   end_time: 960
-  liquidity_sensitivity: 0.7
+  liquidity_sensitivity: 0.3
   max_position: 1000
   price_volatility: 1.0
   standard_spread: 1.0
   start_time: 360
   time_step: 10
 linear_skew:
-  a1: 0.06038779592311546
+  a1: 0.06641385709559113
