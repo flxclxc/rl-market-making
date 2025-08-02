@@ -1,6 +1,7 @@
-from matplotlib import pyplot as plt
 import numpy as np
 import pandas as pd
+from matplotlib import pyplot as plt
+
 
 def plot_results(history):
     plt.figure(figsize=(12, 10))
@@ -44,15 +45,13 @@ def plot_results(history):
     plt.ylabel("Offer Spread")
 
     plt.subplot(3, 2, 5)
-    plt.plot(
-        history["time"], history["mid_price"], label="Mid Price", color="blue"
-    )
+    plt.plot(history["time"], history["mid_price"], label="Mid Price", color="blue")
     plt.title("Mid Price ")
     plt.xlabel("Time Steps")
     plt.ylabel("Mid Price")
 
     plt.tight_layout()
-    plt.savefig("results_plot.png")  # Save the figure to a file
+    plt.savefig("outputs/results_plot.png")  # Save the figure to a file
     plt.close()  # Close the figure to free up memory
 
 

@@ -1,12 +1,14 @@
 from collections import deque
-from matplotlib import pyplot as plt
+
 import numpy as np
-from torch import nn, optim
 import torch
-from tqdm import tqdm
 import yaml
+from matplotlib import pyplot as plt
+from torch import nn, optim
+from tqdm import tqdm
 
 from env import MarketMakingEnv
+
 
 # Policy network (Actor)
 class PolicyNet(nn.Module):
@@ -20,26 +22,24 @@ class PolicyNet(nn.Module):
             nn.Linear(64, 64),
             nn.Tanh(),
             nn.Linear(64, output_dim),
-            nn.Tanh()
+            nn.Tanh(),
         )
 
     def forward(self, x):
         return self.net(x) * (self.max_spread - self.min_spread) + self.min_spread
 
+
 # Value network (Critic)
 class ValueNet(nn.Module):
     def __init__(self, input_dim):
         super().__init__()
-        self.net = nn.Sequential(
-            nn.Linear(input_dim, 64),
-            nn.Tanh(),
-            nn.Linear(64, 1)
-        )
+        self.net = nn.Sequential(nn.Linear(input_dim, 64), nn.Tanh(), nn.Linear(64, 1))
 
     def forward(self, x):
         return self.net(x).squeeze(-1)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     state_dim = 2  # Example state dimension
     action_dim = 2  # Example action dimension
     lr = 1e-2  # Learning rate
@@ -53,26 +53,28 @@ if __name__ == '__main__':
 
     with open("config.yml", "r") as file:
         config = yaml.safe_load(file)
-    
+
     avg_rewards = []
     running_rewards = deque(maxlen=1000)  # Store last 100 rewards
 
-    for _ in tqdm(range(10000)):  # Example number of steps        
+    for _ in tqdm(range(10000)):  # Example number of steps
         log_probs = []
         rewards = []
         states = []
 
-        env = MarketMakingEnv(**config['env'])  
+        env = MarketMakingEnv(**config["env"])
         state = env.reset()
 
         while not env.done:
-            state_tensor = torch.tensor([state['position'], state['time_remaining']], dtype=torch.float32)
+            state_tensor = torch.tensor(
+                [state["position"], state["time_remaining"]], dtype=torch.float32
+            )
             states.append(state_tensor)
             action = actor(state_tensor)
             dist = torch.distributions.Normal(action, 0.1)
             sampled_action = dist.rsample()
             log_prob = dist.log_prob(sampled_action).sum()
-                
+
             value = critic(state_tensor)
             next_state, reward, done = env.step(sampled_action.detach().numpy())
 
@@ -80,11 +82,13 @@ if __name__ == '__main__':
             rewards.append(reward)
 
             state = next_state
-        
+
         running_rewards.append(np.sum(rewards))
         print(np.mean(running_rewards))
         avg_rewards.append(np.mean(running_rewards))
-        state_tensor = torch.tensor([state['position'], state['time_remaining']], dtype=torch.float32)
+        state_tensor = torch.tensor(
+            [state["position"], state["time_remaining"]], dtype=torch.float32
+        )
         states.append(state_tensor)
 
         # --- In your training loop, after collecting an episode:
@@ -98,7 +102,7 @@ if __name__ == '__main__':
 
         actor_loss = (-log_probs * advantage.detach()).sum()
         critic_loss = nn.MSELoss()(values[:-1], td_target.detach())
-    
+
         actor_optim.zero_grad()
         actor_loss.backward()
         actor_optim.step()
@@ -109,9 +113,8 @@ if __name__ == '__main__':
         critic_optim.step()
 
         plt.plot(running_rewards)
-        plt.xlabel('Episode')
-        plt.ylabel('Average Reward')
-        plt.title('Running Average Reward')
-        plt.savefig('running_average_reward.png')
+        plt.xlabel("Episode")
+        plt.ylabel("Average Reward")
+        plt.title("Running Average Reward")
+        plt.savefig("running_average_reward.png")
         plt.close()
-        
